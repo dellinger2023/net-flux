@@ -14,6 +14,10 @@ const (
 	DefaultExpiration = 600 * time.Second
 )
 
+var (
+	ErrNil = redis.Nil
+)
+
 // Options Redis 连接配置
 type Options struct {
 	Addr     string // "host:port"
