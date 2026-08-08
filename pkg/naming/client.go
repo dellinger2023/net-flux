@@ -221,41 +221,61 @@ func (n *nacosDiscoClient) Close() {
 }
 
 func toInstance(instance *model.Instance) (*gen.Instance, error) {
-	innerIP := instance.Metadata["inner_ip"]
-	innerPort, err := strconv.Atoi(instance.Metadata["inner_port"])
-	if err != nil {
-		return nil, err
-	}
-	publicIP := instance.Metadata["public_ip"]
-	publicPort, err := strconv.Atoi(instance.Metadata["public_port"])
-	if err != nil {
-		return nil, err
+	extra := make(map[string]string, len(instance.Metadata))
+	for k, v := range instance.Metadata {
+		extra[k] = v
 	}
 
-	node, err := strconv.Atoi(instance.Metadata["node"])
-	if err != nil {
-		return nil, err
+	innerIP := instance.Metadata["inner_ip"]
+	if innerIP == "" {
+		innerIP = instance.Ip
+	}
+	innerPort := int(instance.Port)
+	if v := instance.Metadata["inner_port"]; v != "" {
+		if p, err := strconv.Atoi(v); err == nil {
+			innerPort = p
+		}
+	}
+	publicIP := instance.Metadata["public_ip"]
+	if publicIP == "" {
+		publicIP = instance.Ip
+	}
+	publicPort := int(instance.Port)
+	if v := instance.Metadata["public_port"]; v != "" {
+		if p, err := strconv.Atoi(v); err == nil {
+			publicPort = p
+		}
+	}
+	node := 0
+	if v := instance.Metadata["node"]; v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			node = n
+		}
 	}
 
 	return &gen.Instance{
-		InstanceId:  instance.InstanceId,
-		PrivateIp:   instance.Ip,
-		PrivatePort: int32(instance.Port),
-		InnerIp:     innerIP,
-		InnerPort:   int32(innerPort),
-		PublicIp:    publicIP,
-		PublicPort:  int32(publicPort),
-		Weight:      float32(instance.Weight),
-		Healthy:     instance.Healthy,
-		Enable:      instance.Enable,
-		Ephemeral:   instance.Ephemeral,
-		Node:        int32(node),
-		Extra:       instance.Metadata,
+		InstanceId:   instance.InstanceId,
+		InstanceName: instance.ServiceName,
+		PrivateIp:    instance.Ip,
+		PrivatePort:  int32(instance.Port),
+		InnerIp:      innerIP,
+		InnerPort:    int32(innerPort),
+		PublicIp:     publicIP,
+		PublicPort:   int32(publicPort),
+		Weight:       float32(instance.Weight),
+		Healthy:      instance.Healthy,
+		Enable:       instance.Enable,
+		Ephemeral:    instance.Ephemeral,
+		Node:         int32(node),
+		Extra:        extra,
 	}, nil
 }
 
 func fromInstance(instance *gen.Instance) *model.Instance {
 	metadata := make(map[string]string)
+	for k, v := range instance.Extra {
+		metadata[k] = v
+	}
 	metadata["inner_ip"] = instance.InnerIp
 	metadata["inner_port"] = strconv.Itoa(int(instance.InnerPort))
 	metadata["public_ip"] = instance.PublicIp
