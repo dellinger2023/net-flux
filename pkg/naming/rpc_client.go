@@ -123,19 +123,31 @@ func (r *rpcClient) GetService(serviceName string, groupName string, clusters []
 
 // GetServiceInstance implements DiscoClient.
 func (r *rpcClient) GetServiceInstance(serviceName string, groupName string, clusters []string) (*gen.Instance, error) {
-	r.GetService(serviceName, groupName, nil)
+	_, err := r.GetService(serviceName, groupName, nil)
+	if err != nil {
+		logger.Errorf("GetServiceInstance failed: %v", err)
+		return nil, err
+	}
 	return nil, nil
 }
 
 // GetServiceInstanceByGroup implements DiscoClient.
 func (r *rpcClient) GetServiceInstanceByGroup(serviceName string, groupName string) (*gen.Instance, error) {
-	r.GetService(serviceName, groupName, nil)
+	_, err := r.GetService(serviceName, groupName, nil)
+	if err != nil {
+		logger.Errorf("GetServiceInstanceByGroup failed: %v", err)
+		return nil, err
+	}
 	return nil, nil
 }
 
 // GetServiceInstanceByName implements DiscoClient.
 func (r *rpcClient) GetServiceInstanceByName(serviceName string) (*gen.Instance, error) {
-	r.GetService(serviceName, r.groupName, nil)
+	_, err := r.GetService(serviceName, r.groupName, nil)
+	if err != nil {
+		logger.Errorf("GetServiceInstanceByName failed: %v", err)
+		return nil, err
+	}
 	return nil, nil
 }
 
