@@ -2,6 +2,7 @@ package balancer
 
 import (
 	"errors"
+	"strconv"
 
 	"github.com/dellinger2023/net-flux/gen"
 	"github.com/dellinger2023/net-flux/pkg/naming"
@@ -30,8 +31,9 @@ func (b *roundRobinBalancer) Pick(service *gen.Service) (*gen.Instance, error) {
 	return service.Instances[b.nextIndex], nil
 }
 
-func (b *roundRobinBalancer) Resolve(serviceName, streamId string) (*gen.Instance, error) {
-	service, err := b.discoverClient.GetService(serviceName, b.groupName, nil)
+func (b *roundRobinBalancer) Resolve(serviceName, streamId string, nodeId int) (*gen.Instance, error) {
+	grp := strconv.Itoa(nodeId)
+	service, err := b.discoverClient.GetService(serviceName, grp, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -42,5 +44,10 @@ func (b *roundRobinBalancer) Resolve(serviceName, streamId string) (*gen.Instanc
 }
 
 func NewRoundRobinBalancer(cli naming.DiscoClient) Balancer {
-	return &roundRobinBalancer{nextIndex: 0, totalWeight: 0, groupName: cli.GetGroupName(), discoverClient: cli}
+	return &roundRobinBalancer{
+		nextIndex:      0,
+		totalWeight:    0,
+		groupName:      cli.GetGroupName(),
+		discoverClient: cli,
+	}
 }

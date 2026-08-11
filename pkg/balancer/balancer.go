@@ -14,5 +14,5 @@ type Balancer interface {
 	Pick(service *gen.Service) (*gen.Instance, error)
 
 	// Resolve resolves a stream to an instance.
-	Resolve(serviceName, streamId string) (*gen.Instance, error)
+	Resolve(serviceName, streamId string, nodeId int) (*gen.Instance, error)
 }

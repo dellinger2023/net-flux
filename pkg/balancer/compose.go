@@ -19,7 +19,7 @@ func (b *composeBalancer) Pick(service *gen.Service) (*gen.Instance, error) {
 	return b.innerBalancer.Pick(service)
 }
 
-func (b *composeBalancer) Resolve(serviceName, streamId string) (*gen.Instance, error) {
+func (b *composeBalancer) Resolve(serviceName, streamId string, nodeId int) (*gen.Instance, error) {
 	if b.discoverClient == nil {
 		return nil, errors.New("discover client is not set")
 	}
@@ -30,7 +30,7 @@ func (b *composeBalancer) Resolve(serviceName, streamId string) (*gen.Instance, 
 		return nil, err
 	}
 	if util.IsEmptyStr(content) {
-		instance, err := b.innerBalancer.Resolve(serviceName, streamId)
+		instance, err := b.innerBalancer.Resolve(serviceName, streamId, nodeId)
 		if err != nil {
 			return nil, err
 		}
