@@ -2,6 +2,7 @@ package balancer
 
 import (
 	"github.com/dellinger2023/net-flux/gen"
+	"github.com/dellinger2023/net-flux/pkg/naming"
 )
 
 /**
@@ -15,4 +16,6 @@ type Balancer interface {
 
 	// Resolve resolves a stream to an instance.
 	Resolve(serviceName, streamId string, nodeId int) (*gen.Instance, error)
+
+	DiscoverClient() naming.DiscoClient
 }

@@ -15,6 +15,11 @@ type composeBalancer struct {
 	discoverClient naming.DiscoClient
 }
 
+// DiscoverClient implements Balancer.
+func (b *composeBalancer) DiscoverClient() naming.DiscoClient {
+	return b.discoverClient
+}
+
 func (b *composeBalancer) Pick(service *gen.Service) (*gen.Instance, error) {
 	return b.innerBalancer.Pick(service)
 }

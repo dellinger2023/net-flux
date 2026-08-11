@@ -88,6 +88,10 @@ func (b *roundRobinBalancer) Resolve(serviceName, streamId string, nodeId int) (
 	return b.Pick(service)
 }
 
+func (b *roundRobinBalancer) DiscoverClient() naming.DiscoClient {
+	return b.discoverClient
+}
+
 func NewRoundRobinBalancer(cli naming.DiscoClient) Balancer {
 	return &roundRobinBalancer{
 		nextIndex:      0,

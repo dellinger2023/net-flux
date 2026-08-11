@@ -99,7 +99,7 @@ func (r *rpcClient) GetConfig(dataId string) (string, error) {
 
 // GetGroupName implements DiscoClient.
 func (r *rpcClient) GetGroupName() string {
-	panic("unimplemented")
+	return r.groupName
 }
 
 // GetService implements DiscoClient.
@@ -109,8 +109,14 @@ func (r *rpcClient) GetService(serviceName string, groupName string, clusters []
 	}
 
 	logger.Debugf("send lookup, serviceName=%s", serviceName)
+	node, err := strconv.Atoi(groupName)
+	if err != nil {
+		return nil, errors.New("invalid group name")
+	}
 	lookup := &gen.Lookup{
 		ServiceName: serviceName,
+		Node:        int32(node),
+		Healthy:     true,
 	}
 	if err := r.cli.Write(uint8(gen.CMD_DISCOVERY),
 		uint8(gen.SCMDDisco_LOOKUP),
