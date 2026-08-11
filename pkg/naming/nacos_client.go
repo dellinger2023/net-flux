@@ -1,34 +1,13 @@
 package naming
 
 import (
+	"errors"
 	"strconv"
 
 	"github.com/dellinger2023/net-flux/gen"
 	"github.com/dellinger2023/net-flux/pkg/logger"
 	"github.com/nacos-group/nacos-sdk-go/v2/model"
 )
-
-type DiscoClient interface {
-	GetGroupName() string
-	RegisterInstance(instance *gen.Instance) error
-	DeregisterInstance(serviceName, groupName, ip string, port uint64) error
-	GetAllServices(groupName string) ([]string, error)
-	GetService(serviceName, groupName string, clusters []string) (*gen.Service, error)
-	GetServiceInstanceByName(serviceName string) (*gen.Instance, error)
-	GetServiceInstance(serviceName, groupName string, clusters []string) (*gen.Instance, error)
-	GetServiceInstanceByGroup(serviceName, groupName string) (*gen.Instance, error)
-	GetServiceInstancesByName(serviceName string) ([]*gen.Instance, error)
-	GetServiceInstances(serviceName, groupName string, clusters []string) ([]*gen.Instance, error)
-
-	SetConfig(dataId, content string) error
-	GetConfig(dataId string) (string, error)
-	DeleteConfig(dataId string) error
-	ListenConfig(dataId string, onChange func(namespace, group, dataId, data string)) error
-	CancelListenConfig(dataId string) error
-	SearchConfig(search, dataId string) (*ConfigPage, error)
-
-	Close()
-}
 
 type nacosDiscoClient struct {
 	groupName    string
@@ -217,10 +196,19 @@ func NewNacosDiscoverClient(cfg DiscoSetting) (DiscoClient, error) {
 }
 
 func (n *nacosDiscoClient) Close() {
-	n.namingClient.client.CloseClient()
+	if n.namingClient != nil {
+		n.namingClient.client.CloseClient()
+	}
+
+	if n.configClient != nil {
+		n.configClient.client.CloseClient()
+	}
 }
 
 func toInstance(instance *model.Instance) (*gen.Instance, error) {
+	if instance == nil {
+		return nil, errors.New("instance is nil")
+	}
 	extra := make(map[string]string, len(instance.Metadata))
 	for k, v := range instance.Metadata {
 		extra[k] = v

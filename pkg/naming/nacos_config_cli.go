@@ -23,7 +23,7 @@ func initConfigClient(cfg DiscoSetting) (config_client.IConfigClient, error) {
 	clientConfig := constant.ClientConfig{
 		NamespaceId:         cfg.Namespace, // 如果不需要命名空间，可以留空
 		TimeoutMs:           5000,
-		NotLoadCacheAtStart: cfg.PreloadCache,
+		NotLoadCacheAtStart: !cfg.PreloadCache,
 		LogDir:              cfg.LogDir,
 		CacheDir:            cfg.CacheDir,
 		LogLevel:            "info",

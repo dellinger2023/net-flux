@@ -27,7 +27,7 @@ func initNamingClient(cfg DiscoSetting) (naming_client.INamingClient, error) {
 	clientConfig := constant.ClientConfig{
 		NamespaceId:         cfg.Namespace, // 留空或 "public" 表示默认命名空间
 		TimeoutMs:           5000,
-		NotLoadCacheAtStart: cfg.PreloadCache,
+		NotLoadCacheAtStart: !cfg.PreloadCache,
 		LogDir:              cfg.LogDir,
 		CacheDir:            cfg.CacheDir,
 		LogLevel:            "info",

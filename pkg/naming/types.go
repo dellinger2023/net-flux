@@ -1,5 +1,7 @@
 package naming
 
+import "github.com/dellinger2023/net-flux/gen"
+
 type DiscoSetting struct {
 	Host         string `mapstructure:"host" json:"host" yaml:"host"`
 	Port         int    `mapstructure:"port" json:"port" yaml:"port"`
@@ -29,4 +31,26 @@ type ConfigPage struct {
 	PageNumber     int          `param:"pageNumber"`
 	PagesAvailable int          `param:"pagesAvailable"`
 	PageItems      []ConfigItem `param:"pageItems"`
+}
+
+type DiscoClient interface {
+	GetGroupName() string
+	RegisterInstance(instance *gen.Instance) error
+	DeregisterInstance(serviceName, groupName, ip string, port uint64) error
+	GetAllServices(groupName string) ([]string, error)
+	GetService(serviceName, groupName string, clusters []string) (*gen.Service, error)
+	GetServiceInstanceByName(serviceName string) (*gen.Instance, error)
+	GetServiceInstance(serviceName, groupName string, clusters []string) (*gen.Instance, error)
+	GetServiceInstanceByGroup(serviceName, groupName string) (*gen.Instance, error)
+	GetServiceInstancesByName(serviceName string) ([]*gen.Instance, error)
+	GetServiceInstances(serviceName, groupName string, clusters []string) ([]*gen.Instance, error)
+
+	SetConfig(dataId, content string) error
+	GetConfig(dataId string) (string, error)
+	DeleteConfig(dataId string) error
+	ListenConfig(dataId string, onChange func(namespace, group, dataId, data string)) error
+	CancelListenConfig(dataId string) error
+	SearchConfig(search, dataId string) (*ConfigPage, error)
+
+	Close()
 }
