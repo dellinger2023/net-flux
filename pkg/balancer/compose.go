@@ -24,7 +24,7 @@ func (b *composeBalancer) Resolve(serviceName, streamId string, nodeId int) (*ge
 		return nil, errors.New("discover client is not set")
 	}
 
-	key := fmt.Sprintf("service.%s.%s", serviceName, streamId)
+	key := fmt.Sprintf("service_%s_%s_%d", serviceName, streamId, nodeId)
 	content, err := b.discoverClient.GetConfig(key)
 	if err != nil {
 		return nil, err

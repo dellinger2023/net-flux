@@ -85,7 +85,8 @@ func (r *rpcClient) GetConfig(dataId string) (string, error) {
 	}
 
 	data, err := r.storage.Get(dataId)
-	if err != nil {
+	if err != nil && err != redis.ErrNil {
+		logger.Errorf("get config failed: %v", err)
 		return "", err
 	}
 
