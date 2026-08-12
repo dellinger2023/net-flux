@@ -110,6 +110,7 @@ func interactiveLoop(ctx context.Context, cli *network.TcpClient) {
 			if err := cli.Write(uint8(gen.CMD_DISCOVERY), uint8(gen.SCMDDisco_REGISTER), instance); err != nil {
 				logger.Errorf("register write failed: %v", err)
 			}
+
 		case 2:
 			logger.Info("注销服务")
 			deregister := &gen.Deregister{
@@ -121,6 +122,7 @@ func interactiveLoop(ctx context.Context, cli *network.TcpClient) {
 			if err := cli.Write(uint8(gen.CMD_DISCOVERY), uint8(gen.SCMDDisco_DEREGISTER), deregister); err != nil {
 				logger.Errorf("deregister write failed: %v", err)
 			}
+
 		case 3:
 			logger.Info("查询服务")
 			lookup := &gen.Lookup{
@@ -131,6 +133,7 @@ func interactiveLoop(ctx context.Context, cli *network.TcpClient) {
 			if err := cli.Write(uint8(gen.CMD_DISCOVERY), uint8(gen.SCMDDisco_LOOKUP), lookup); err != nil {
 				logger.Errorf("lookup write failed: %v", err)
 			}
+
 		case 4:
 			logger.Info("上报数据")
 			nodeInfo, err := core.ReadBaseNodeInfo(node)
@@ -195,6 +198,7 @@ func interactiveLoop(ctx context.Context, cli *network.TcpClient) {
 						StreamId:    streamId,
 						StreamPath:  "/vod/" + streamId + ".m3u8",
 						MachineType: gen.MachineType_MT_GATEWAY,
+						Status:      gen.StreamStatus_SS_CLOSED,
 					}); err != nil {
 						logger.Errorf("notify delete stream failed: %v", err)
 					}
@@ -206,6 +210,7 @@ func interactiveLoop(ctx context.Context, cli *network.TcpClient) {
 						StreamId:    streamId,
 						StreamPath:  "/vod/" + streamId + ".m3u8",
 						MachineType: gen.MachineType_MT_GATEWAY,
+						Status:      gen.StreamStatus_SS_FAILED,
 					}); err != nil {
 						logger.Errorf("notify stream failed event failed: %v", err)
 					}

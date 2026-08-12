@@ -56,9 +56,6 @@ func NewClientConn(opts TCPConnOptions) (TCPConn, error) {
 		outgoingCh: opts.OutgoingCh,
 	}
 	c.handler = c
-	if c.options.HeartbeatInterval > 0 {
-		c.heartbeat()
-	}
 	return c, nil
 }
 
