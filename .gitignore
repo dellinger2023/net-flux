@@ -44,5 +44,5 @@ go.work.sum
 img/
 log/
 logs/
-cache/
+/cache/
 tmp_proto_node/
