@@ -18,6 +18,7 @@ import (
 type tcpConn struct {
 	conn         net.Conn
 	id           uint32
+	remoteAddr   string
 	closed       atomic.Bool
 	skipOutgoing atomic.Bool
 	closeOnce    sync.Once
@@ -224,9 +225,11 @@ func (c *tcpConn) Connect(addr string) error {
 		return err
 	}
 	c.conn = conn
+	c.remoteAddr = addr
 	c.closed.Store(false)
 	if err := c.initIO(); err != nil {
 		conn.Close()
+		c.conn = nil
 		return err
 	}
 	if c.options.HeartbeatInterval > 0 {
@@ -262,13 +265,15 @@ func (c *tcpConn) ConnectWithTLS(addr string, tlsConfig *tls.Config) error {
 		return err
 	}
 	c.conn = conn
+	c.remoteAddr = addr
 	c.closed.Store(false)
 	if err := c.initIO(); err != nil {
 		conn.Close()
+		c.conn = nil
 		return err
 	}
 	if c.options.HeartbeatInterval > 0 {
-		c.heartbeat()
+		go c.heartbeat()
 	}
 	return nil
 }
@@ -316,7 +321,7 @@ func (c *tcpConn) close(abort bool) error {
 			err = conn.Close()
 		}
 
-		if c.options.ReconnectInterval > 0 && c.outgoingCh == nil {
+		if abort && c.options.ReconnectInterval > 0 && c.outgoingCh == nil && c.remoteAddr != "" {
 			go c.reconnect()
 		}
 	})
@@ -324,23 +329,46 @@ func (c *tcpConn) close(abort bool) error {
 }
 
 func (c *tcpConn) reconnect() {
+	addr := c.remoteAddr
+	if addr == "" {
+		logger.Errorf("[id=%d] reconnect skipped: empty remote addr", c.id)
+		return
+	}
+
 	for i := 0; c.options.ReconnectMax == 0 || i < c.options.ReconnectMax; i++ {
 		time.Sleep(c.options.ReconnectInterval)
-		addr := c.conn.RemoteAddr().String()
+		logger.Infof("[id=%d] reconnecting to %s (attempt %d)", c.id, addr, i+1)
+
 		conn, dialErr := net.Dial("tcp", addr)
 		if dialErr != nil {
+			logger.Errorf("[id=%d] reconnect dial failed: %v", c.id, dialErr)
 			continue
 		}
+
+		c.writeMu.Lock()
 		c.conn = conn
 		c.closed.Store(false)
 		c.closeOnce = sync.Once{}
 		c.closeChan = make(chan struct{})
+		c.writeMu.Unlock()
+
 		if initErr := c.initIO(); initErr != nil {
-			conn.Close()
+			logger.Errorf("[id=%d] reconnect initIO failed: %v", c.id, initErr)
+			_ = conn.Close()
+			c.writeMu.Lock()
+			c.conn = nil
+			c.closed.Store(true)
+			c.writeMu.Unlock()
 			continue
 		}
+
+		if c.options.HeartbeatInterval > 0 {
+			go c.heartbeat()
+		}
+		logger.Infof("[id=%d] reconnected to %s", c.id, addr)
 		return
 	}
+	logger.Errorf("[id=%d] reconnect gave up to %s", c.id, addr)
 }
 
 func (c *tcpConn) IsClosed() bool {
