@@ -93,7 +93,7 @@ func interactiveLoop(ctx context.Context, cli *network.TcpClient) {
 		case 1:
 			logger.Info("注册服务")
 			instance := &gen.Instance{
-				InstanceName: "test",
+				InstanceName: "test1",
 				PublicIp:     "124.79.229.235",
 				PublicPort:   80,
 				PrivateIp:    "127.0.0.1",
@@ -103,7 +103,7 @@ func interactiveLoop(ctx context.Context, cli *network.TcpClient) {
 				Weight:       1.0,
 				Healthy:      true,
 				Enable:       true,
-				Ephemeral:    true,
+				Ephemeral:    false,
 				Node:         int32(node),
 			}
 			logger.Infof("send register, node=%d", instance.GetNode())
@@ -111,15 +111,44 @@ func interactiveLoop(ctx context.Context, cli *network.TcpClient) {
 				logger.Errorf("register write failed: %v", err)
 			}
 
+			instance1 := &gen.Instance{
+				InstanceName: "test2",
+				PublicIp:     "124.79.229.234",
+				PublicPort:   80,
+				PrivateIp:    "127.0.0.2",
+				PrivatePort:  8080,
+				InnerIp:      "10.0.0.2",
+				InnerPort:    9000,
+				Weight:       1.0,
+				Healthy:      true,
+				Enable:       true,
+				Ephemeral:    false,
+				Node:         int32(node),
+			}
+			logger.Infof("send register1, node=%d", instance1.GetNode())
+			if err := cli.Write(uint8(gen.CMD_DISCOVERY), uint8(gen.SCMDDisco_REGISTER), instance1); err != nil {
+				logger.Errorf("register1 write failed: %v", err)
+			}
+
 		case 2:
 			logger.Info("注销服务")
 			deregister := &gen.Deregister{
-				InstanceName: "test",
+				InstanceName: "test1",
 				Ip:           "127.0.0.1",
 				Port:         8080,
 				Node:         int32(node),
 			}
 			if err := cli.Write(uint8(gen.CMD_DISCOVERY), uint8(gen.SCMDDisco_DEREGISTER), deregister); err != nil {
+				logger.Errorf("deregister write failed: %v", err)
+			}
+
+			deregister2 := &gen.Deregister{
+				InstanceName: "test2",
+				Ip:           "127.0.0.2",
+				Port:         8080,
+				Node:         int32(node),
+			}
+			if err := cli.Write(uint8(gen.CMD_DISCOVERY), uint8(gen.SCMDDisco_DEREGISTER), deregister2); err != nil {
 				logger.Errorf("deregister write failed: %v", err)
 			}
 

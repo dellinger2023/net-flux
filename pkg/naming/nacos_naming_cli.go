@@ -43,6 +43,7 @@ func initNamingClient(cfg DiscoSetting) (naming_client.INamingClient, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return namingClient, nil
 }
 

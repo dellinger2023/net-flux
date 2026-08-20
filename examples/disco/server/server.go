@@ -9,7 +9,6 @@ import (
 	"os/signal"
 	"strconv"
 	"syscall"
-	"time"
 
 	"github.com/dellinger2023/net-flux/gen"
 	"github.com/dellinger2023/net-flux/pkg/logger"
@@ -19,10 +18,9 @@ import (
 )
 
 var (
-	addr        string
-	discoClient naming.DiscoClient
-	discoCfg    = naming.DiscoSetting{
-		Host:         "127.0.0.1",
+	addr     string
+	discoCfg = &naming.DiscoSetting{
+		Host:         "192.168.2.40",
 		Port:         8848,
 		Namespace:    "public",
 		LogDir:       "./logs",
@@ -34,10 +32,10 @@ var (
 		Password:     "nacos",
 		Node:         1,
 	}
+	factory = newDiscoClientFactory(discoCfg)
 )
 
 func main() {
-	var err error
 	flag.StringVar(&addr, "addr", ":1911", "listen address")
 	flag.StringVar(&discoCfg.Host, "disco-host", "127.0.0.1", "disco host")
 	flag.IntVar(&discoCfg.Port, "disco-port", 8848, "disco port")
@@ -52,11 +50,11 @@ func main() {
 	flag.IntVar(&discoCfg.Node, "disco-node", 1, "disco node")
 	flag.Parse()
 
-	discoClient, err = naming.NewNacosDiscoverClient(discoCfg)
-	if err != nil {
-		logger.Fatalf("failed to create disco client: %v", err)
-	}
-	time.Sleep(time.Second)
+	// discoClient, err = naming.NewNacosDiscoverClient(discoCfg)
+	// if err != nil {
+	// 	logger.Fatalf("failed to create disco client: %v", err)
+	// }
+	// time.Sleep(time.Second)
 
 	logger.Info("disco server is starting...")
 	logger.Info("================================================")
@@ -104,48 +102,52 @@ func (h *eventHandler) OnCmdSystem(conn network.TCPConn, pkt proto.Message) erro
 }
 
 func (h *eventHandler) OnCmdDiscovery(conn network.TCPConn, pkt proto.Message) error {
-	var err error
-	if discoClient == nil {
-		discoClient, err = naming.NewNacosDiscoverClient(discoCfg)
-		if err != nil {
-			logger.Errorf("failed to create disco client: %v", err)
-			return err
-		}
-	}
-
 	writer := conn.(network.TCPWriter)
 	switch pkt := pkt.(type) {
 	case *gen.Instance:
 		logger.Infof("register instance: name=%s node=%d payload=%v",
 			pkt.GetInstanceName(), pkt.GetNode(), pkt)
-		err := discoClient.RegisterInstance(pkt)
-		if err != nil {
+		discoClient := factory.GetDiscoClient(int(conn.ID()), pkt.InstanceName)
+		if discoClient == nil {
+			return fmt.Errorf("failed to get disco client for %s", pkt.InstanceName)
+		}
+		if err := discoClient.RegisterInstance(pkt); err != nil {
 			return err
 		}
+		logger.Infof("register instance success: name=%s node=%d", pkt.GetInstanceName(), pkt.GetNode())
 
 	case *gen.Deregister:
 		logger.Infof("deregister instance: [node=%d] %v", pkt.GetNode(), pkt)
+		discoClient := factory.GetDiscoClient(int(conn.ID()), pkt.InstanceName)
+		if discoClient == nil {
+			return fmt.Errorf("failed to get disco client for %s", pkt.InstanceName)
+		}
 		err := discoClient.DeregisterInstance(pkt.InstanceName, strconv.Itoa(int(pkt.Node)), pkt.Ip, uint64(pkt.Port))
 		if err != nil {
 			logger.Errorf("failed to deregister instance: %v", err)
 			return err
 		}
 		logger.Infof("deregister instance success: [node=%d] %v", pkt.GetNode(), pkt)
-		discoClient.Close()
-		discoClient = nil
+		factory.RemoveDiscoClient(int(conn.ID()), pkt.InstanceName)
 
 	case *gen.Lookup:
 		logger.Infof("lookup instance: %v", pkt)
-		inst, err := discoClient.GetServiceInstanceByGroup(pkt.ServiceName, strconv.Itoa(int(pkt.Node)))
+		discoClient := factory.GetDiscoClient(int(conn.ID()), "")
+		if discoClient == nil {
+			return fmt.Errorf("failed to get disco client for lookup")
+		}
+		instances, err := discoClient.GetServiceInstances(pkt.ServiceName, strconv.Itoa(int(pkt.Node)), []string{})
+		//inst, err := discoClient.GetServiceInstanceByGroup(pkt.ServiceName)
 		if err != nil {
 			return err
 		}
+
 		services := make([]*gen.Service, 0)
 		services = append(services, &gen.Service{
-			Instances: []*gen.Instance{inst},
+			Instances: instances,
 			Cluster:   "",
-			Name:      inst.InstanceName,
-			GroupName: strconv.Itoa(int(inst.Node)),
+			Name:      pkt.ServiceName,
+			GroupName: strconv.Itoa(int(pkt.Node)),
 			Valid:     pkt.Healthy,
 		})
 		return writer.WritePacket(
