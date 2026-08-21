@@ -74,3 +74,22 @@ func (c *TcpClient) IsClosed() bool {
 func (c *TcpClient) Write(cmd, subcmd uint8, pkt proto.Message) error {
 	return c.conn.WritePacket(cmd, subcmd, pkt)
 }
+
+// SetEventHandler 替换事件处理器（可用于挂载 LOOKUP_ACK 等待逻辑）。
+func (c *TcpClient) SetEventHandler(handler EventHandler) {
+	c.event = handler
+	if options := c.options; options != nil {
+		options.Handler = handler
+	}
+	if tc, ok := c.conn.(*tcpConn); ok {
+		tc.event = handler
+		if tc.handler == tc {
+			// connHandler 仍是自身，OnMessage 会转调 tc.event
+		}
+	}
+}
+
+// EventHandler 返回当前事件处理器。
+func (c *TcpClient) EventHandler() EventHandler {
+	return c.event
+}

@@ -133,30 +133,40 @@ func interactiveLoop(ctx context.Context, cli *network.TcpClient) {
 		case 2:
 			logger.Info("注销服务")
 			deregister := &gen.Deregister{
-				InstanceName: "test1",
-				Ip:           "127.0.0.1",
-				Port:         8080,
-				Node:         int32(node),
+				InstanceName: "web",
+				Ip:           "10.157.225.55",
+				Port:         8000,
+				Node:         4,
 			}
 			if err := cli.Write(uint8(gen.CMD_DISCOVERY), uint8(gen.SCMDDisco_DEREGISTER), deregister); err != nil {
 				logger.Errorf("deregister write failed: %v", err)
 			}
 
 			deregister2 := &gen.Deregister{
-				InstanceName: "test2",
-				Ip:           "127.0.0.2",
-				Port:         8080,
-				Node:         int32(node),
+				InstanceName: "rtmp",
+				Ip:           "10.157.225.55",
+				Port:         2935,
+				Node:         4,
 			}
 			if err := cli.Write(uint8(gen.CMD_DISCOVERY), uint8(gen.SCMDDisco_DEREGISTER), deregister2); err != nil {
+				logger.Errorf("deregister write failed: %v", err)
+			}
+
+			deregister3 := &gen.Deregister{
+				InstanceName: "rtsp",
+				Ip:           "10.157.225.55",
+				Port:         8554,
+				Node:         4,
+			}
+			if err := cli.Write(uint8(gen.CMD_DISCOVERY), uint8(gen.SCMDDisco_DEREGISTER), deregister3); err != nil {
 				logger.Errorf("deregister write failed: %v", err)
 			}
 
 		case 3:
 			logger.Info("查询服务")
 			lookup := &gen.Lookup{
-				ServiceName: "test",
-				Node:        1,
+				ServiceName: "web",
+				Node:        4,
 				Healthy:     true,
 			}
 			if err := cli.Write(uint8(gen.CMD_DISCOVERY), uint8(gen.SCMDDisco_LOOKUP), lookup); err != nil {
