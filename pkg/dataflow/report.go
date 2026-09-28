@@ -88,3 +88,44 @@ func NotifyStreamsQueryEvent(metric *gen.StreamMetric) error {
 	}
 	return nil
 }
+
+func NotifyNewSessionEvent(metric *gen.SessionMetric) error {
+	client, err := getClient()
+	if err != nil {
+		return err
+	}
+
+	if err := client.Write(uint8(gen.CMD_DATA_REPORT),
+		uint8(gen.SCMDDataReport_SESSION_ADD), metric); err != nil {
+		logger.Errorf("failed to send session add: %v, %v", metric, err)
+		return err
+	}
+	return nil
+}
+
+func NotifyDeleteSessionEvent(metric *gen.SessionMetric) error {
+	client, err := getClient()
+	if err != nil {
+		return err
+	}
+
+	if err := client.Write(uint8(gen.CMD_DATA_REPORT),
+		uint8(gen.SCMDDataReport_SESSION_DELETE), metric); err != nil {
+		logger.Errorf("failed to send session delete: %v, %v", metric, err)
+		return err
+	}
+	return nil
+}
+func NotifySessionUpdateEvent(metric *gen.SessionMetric) error {
+	client, err := getClient()
+	if err != nil {
+		return err
+	}
+
+	if err := client.Write(uint8(gen.CMD_DATA_REPORT),
+		uint8(gen.SCMDDataReport_SESSION_STATUS), metric); err != nil {
+		logger.Errorf("failed to send session status update: %v, %v", metric, err)
+		return err
+	}
+	return nil
+}
