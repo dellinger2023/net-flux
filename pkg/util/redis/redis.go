@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-redis/redis/v8"
@@ -20,7 +21,8 @@ var (
 
 // Options Redis 连接配置
 type Options struct {
-	Addr     string // "host:port"
+	Addr     string   // "host:port"
+	Cluster  []string // "host1:port1,host2:port2,...", 集群模式
 	Password string
 	DB       int
 	PoolSize int
@@ -39,17 +41,59 @@ func NewOptionsFromHostPort(host string, port int, password string, poolSize int
 	}
 }
 
-// Client go-redis 封装，提供常用操作
-type Client struct {
-	cli *redis.Client
+func NewOptionsFromCluster(clusterAddrs string, password string, poolSize int) *Options {
+	cluster := make([]string, 0)
+	for _, addr := range strings.Split(clusterAddrs, ",") {
+		if addr = strings.TrimSpace(addr); addr != "" {
+			cluster = append(cluster, addr)
+		}
+	}
+	if poolSize <= 0 {
+		poolSize = 10
+	}
+	return &Options{
+		Cluster:  cluster,
+		Password: password,
+		DB:       0,
+		PoolSize: poolSize,
+	}
 }
 
-// New 根据 Options 创建 Redis 客户端
-func New(opt *Options) (*Client, error) {
+// Client go-redis 封装，提供常用操作
+type Client struct {
+	cli redis.UniversalClient
+}
+
+func newRedisClient(opt *Options) (redis.UniversalClient, error) {
 	if opt == nil {
 		return nil, fmt.Errorf("redis: options is nil")
 	}
-	cli := redis.NewClient(&redis.Options{
+	if len(opt.Cluster) > 0 {
+		if opt.DB != 0 {
+			return nil, fmt.Errorf("redis: database selection is not supported in cluster mode")
+		}
+		addrs := make([]string, 0, len(opt.Cluster))
+		for _, addr := range opt.Cluster {
+			if addr = strings.TrimSpace(addr); addr != "" {
+				addrs = append(addrs, addr)
+			}
+		}
+		if len(addrs) == 0 {
+			return nil, fmt.Errorf("redis: cluster addresses are empty")
+		}
+		return redis.NewClusterClient(&redis.ClusterOptions{
+			Addrs:        addrs,
+			Password:     opt.Password,
+			PoolSize:     opt.PoolSize,
+			DialTimeout:  8 * time.Second,
+			ReadTimeout:  15 * time.Second,
+			WriteTimeout: 15 * time.Second,
+		}), nil
+	}
+	if strings.TrimSpace(opt.Addr) == "" {
+		return nil, fmt.Errorf("redis: address is empty")
+	}
+	return redis.NewClient(&redis.Options{
 		Addr:         opt.Addr,
 		Password:     opt.Password,
 		DB:           opt.DB,
@@ -57,12 +101,20 @@ func New(opt *Options) (*Client, error) {
 		DialTimeout:  8 * time.Second,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
-	})
+	}), nil
+}
+
+// New 根据 Options 创建 Redis 客户端
+func New(opt *Options) (*Client, error) {
+	cli, err := newRedisClient(opt)
+	if err != nil {
+		return nil, err
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	if err := cli.Ping(ctx).Err(); err != nil {
 		_ = cli.Close()
-		return nil, fmt.Errorf("redis ping %s: %w", opt.Addr, err)
+		return nil, fmt.Errorf("redis ping failed: %w", err)
 	}
 	return &Client{cli: cli}, nil
 }
@@ -77,7 +129,20 @@ func (c *Client) Close() error {
 
 // Raw 返回底层 redis.Client，用于高级用法
 func (c *Client) Raw() *redis.Client {
-	return c.cli
+	if c == nil {
+		return nil
+	}
+	cli, _ := c.cli.(*redis.Client)
+	return cli
+}
+
+// RawCluster 返回底层 redis.ClusterClient，用于集群模式下的高级用法
+func (c *Client) RawCluster() *redis.ClusterClient {
+	if c == nil {
+		return nil
+	}
+	cli, _ := c.cli.(*redis.ClusterClient)
+	return cli
 }
 
 // --- String ---
